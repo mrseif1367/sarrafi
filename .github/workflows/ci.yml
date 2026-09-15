@@ -21,7 +21,7 @@ jobs:
       - name: Install optional system dependencies (OCR engine)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tesseract-ocr
+          sudo apt-get install -y --no-install-recommends tesseract-ocr fonts-dejavu-core
 
       - name: Install dependencies
         run: |
@@ -59,7 +59,7 @@ jobs:
       - name: Install optional system dependencies (OCR engine)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tesseract-ocr
+          sudo apt-get install -y --no-install-recommends tesseract-ocr fonts-dejavu-core
       - name: Install dependencies
         run: |
           pip install pytest pillow psycopg2-binary reportlab

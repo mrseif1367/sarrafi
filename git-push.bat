@@ -8,10 +8,13 @@ REM  Sarrafi - سامانه‌ی مدیریت خرید و فروش ارز
 REM  ابزار یک‌کلیکی ویندوز: ارسال فایل‌های پروژه روی GitHub
 REM
 REM  مراحل روی صفحه چاپ می‌شوند:
-REM    1) بررسی گیت      2) آماده‌سازی مخزن و هویت
-REM    3) تنظیمات مقصد    4) توکن گیت‌هاب
-REM    5) بررسی/ساخت مخزن  6) کامیت تغییرات
-REM    7) ارسال به گیت‌هاب  8) تگ نسخه و آپلود اختیاری فایل
+REM    1) بررسی گیت            2) آماده‌سازی مخزن و هویت
+REM    3) تنظیمات مقصد          4) توکن گیت‌هاب
+REM    5) بررسی مخزن مقصد        6) هم‌سان‌سازی تاریخچه و ثبت تغییرات
+REM    7) ارسال به گیت‌هاب        8) تگ نسخه و آپلود اختیاری فایل
+REM
+REM  نکته‌ی مهم: پیش از ثبت تغییرات، تاریخچه با مخزن گیت هم‌سو می‌شود؛
+REM  بنابراین ارسال بدون تعارض و بدون جایگزینی اجباری انجام می‌گیرد.
 REM
 REM  اجرا:
 REM    git-push.bat          -> اجرای عادی، فقط بار اول سؤال می‌پرسد
@@ -35,6 +38,8 @@ set "GIT_TERMINAL_PROMPT=0"
 set "NONSTOP="
 set "VER="
 set "RC=0"
+set "FIXED="
+set "KEPT=0"
 if /i "%~1"=="--yes" set "NONSTOP=1"
 
 echo:
@@ -77,7 +82,7 @@ if errorlevel 1 (
 )
 for /f "delims=" %%v in ('git --version 2^>nul') do echo   [1/8] %%v آماده است.
 where powershell >nul 2>nul
-if errorlevel 1 echo   [i] پاورشل پیدا نشد؛ ورودی مخفی توکن و برخی بررسی‌های آنلاین انجام نمی‌شود.
+if errorlevel 1 echo   [i] پاورشل پیدا نشد؛ ورودی مخفی توکن و بررسی‌های آنلاین انجام نمی‌شود.
 
 REM ============================================================
 REM  2) آماده‌سازی مخزن محلی و هویت گیت
@@ -140,8 +145,7 @@ if "%GH_USER%"=="" (
   )
 )
 
-REM -- اعتبارسنجی مقادیر خوانده‌شده: مقدار خراب یا شبه‌متغیر نادیده گرفته می‌شود
-set "CFG_BAD="
+REM اعتبارسنجی مقادیر: مقدار نامعتبر یا شبه‌متغیر نادیده گرفته می‌شود
 if not "!GH_USER!"=="" (
   echo !GH_USER!| findstr /r /c:"^[0-9A-Za-z][0-9A-Za-z-]*$" >nul
   if errorlevel 1 set "GH_USER="
@@ -151,6 +155,7 @@ if not "!GH_REPO!"=="" (
   if errorlevel 1 set "GH_REPO="
   if /i "!GH_REPO!"=="GH_REPO" set "GH_REPO="
   if /i "!GH_REPO!"=="REPO" set "GH_REPO="
+  if /i "!GH_REPO!"=="NAME" set "GH_REPO="
 )
 if not "!GH_BRANCH!"=="" (
   echo !GH_BRANCH!| findstr /r /c:"^[0-9A-Za-z._/-][0-9A-Za-z._/-]*$" >nul
@@ -158,9 +163,9 @@ if not "!GH_BRANCH!"=="" (
   if /i "!GH_BRANCH!"=="GH_BRANCH" set "GH_BRANCH="
 )
 
-if "%GH_USER%"=="" set "GH_USER=%DEF_USER%"
-if "%GH_REPO%"=="" set "GH_REPO=%DEF_REPO%"
-if "%GH_BRANCH%"=="" set "GH_BRANCH=%DEF_BRANCH%"
+if "!GH_USER!"=="" set "GH_USER=%DEF_USER%"
+if "!GH_REPO!"=="" set "GH_REPO=%DEF_REPO%"
+if "!GH_BRANCH!"=="" set "GH_BRANCH=%DEF_BRANCH%"
 
 if not "%NONSTOP%"=="" goto :cfg_ready
 if exist "%CFG_FILE%" (
@@ -210,50 +215,42 @@ echo           Settings - Developer settings - Personal access tokens
 echo           Tokens classic - اسکوپ لازم: repo
 echo:
 call :ask_token
-if "%GH_TOKEN%"=="" (
+if "!GH_TOKEN!"=="" (
   echo   [X] بدون توکن امکان ارسال وجود ندارد.
   goto :fail
 )
 
 :token_ready
-set "AUTH_URL=https://%GH_USER%:%GH_TOKEN%@github.com/%GH_USER%/%GH_REPO%.git"
+set "AUTH_URL=https://!GH_USER!:!GH_TOKEN!@github.com/!GH_USER!/!GH_REPO!.git"
 
 REM ============================================================
 REM  5) بررسی وجود مخزن مقصد روی گیت‌هاب
 REM ============================================================
 echo   [5/8] بررسی مخزن مقصد روی گیت‌هاب ...
 
-REM -- شناسایی حساب واقعی صاحب توکن
+REM شناسایی حساب واقعی صاحب توکن
 set "TOKEN_LOGIN="
-set "FIXED="
 for /f "usebackq delims=" %%l in (`%PSH% "%TLS% try{ (Invoke-RestMethod -Uri 'https://api.github.com/user' -Headers @{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'} -ErrorAction Stop).login } catch { '' }" 2^>nul`) do set "TOKEN_LOGIN=%%l"
-REM فقط اگر شکل نام کاربری معتبر داشت بپذیر
 set "TL_OK="
 echo !TOKEN_LOGIN!| findstr /r /c:"^[0-9A-Za-z][0-9A-Za-z-]*$" >nul
 if not errorlevel 1 set "TL_OK=1"
 if not defined TL_OK set "TOKEN_LOGIN="
+if not "!TOKEN_LOGIN!"=="" echo         حساب صاحب توکن: !TOKEN_LOGIN!
 
-if not "!TOKEN_LOGIN!"=="" (
-  echo         حساب صاحب توکن: !TOKEN_LOGIN!
-) else (
-  echo         [i] نتوانستم حساب توکن را از اینترنت بخوانم — پاورشل یا اینترنت؟
-)
-
-REM -- اعتبارسنجی نام کاربری: گیت‌هاب فقط حرف، رقم و خط تیره می‌پذیرد
+REM اعتبارسنجی نام کاربری: گیت‌هاب نقطه و زیرخط و فاصله نمی‌پذیرد
 set "BADUSER="
 echo !GH_USER!| findstr /r /c:"[._ ]" >nul
 if not errorlevel 1 set "BADUSER=1"
 echo !GH_USER!| findstr /r /c:"^[0-9A-Za-z][0-9A-Za-z-]*$" >nul
 if errorlevel 1 set "BADUSER=1"
 if defined BADUSER (
-  echo         [i] نام کاربری «!GH_USER!» نامعتبر است؛ گیت‌هاب نقطه، خط زیر و فاصله نمی‌پذیرد.
+  echo         [i] نام کاربری «!GH_USER!» نامعتبر است؛ گیت‌هاب نقطه و زیرخط و فاصله نمی‌پذیرد.
   if not "!TOKEN_LOGIN!"=="" (
     set "GH_USER=!TOKEN_LOGIN!"
     set "FIXED=1"
     echo             نام کاربری از روی توکن اصلاح شد: !GH_USER!
   ) else (
-    echo             نام کاربری درست را وارد کنید: دوباره git-push.bat را اجرا و
-    echo             با git-push.bat reset تنظیمات را از نو بگیرید.
+    echo             دستور git-push.bat reset را اجرا و مقادیر را از نو وارد کنید.
     goto :fail
   )
 )
@@ -264,10 +261,10 @@ if "!API_MSG!"=="EXISTS" (
   goto :repo_ready
 )
 
-REM -- اگر حساب توکن متفاوت است، همان‌جا را هم بررسی کن
+REM اگر حساب توکن متفاوت است، همان را هم بررسی کن
 if not "!TOKEN_LOGIN!"=="" (
   if /i not "!GH_USER!"=="!TOKEN_LOGIN!" (
-    echo         مخزن زیر !GH_USER! پیدا نشد؛ بررسی حساب توکن ...
+    echo         مخزن زیر !GH_USER! پیدا نشد؛ بررسی حساب صاحب توکن ...
     call :api_get repos/!TOKEN_LOGIN!/!GH_REPO!
     if "!API_MSG!"=="EXISTS" (
       set "GH_USER=!TOKEN_LOGIN!"
@@ -279,14 +276,15 @@ if not "!TOKEN_LOGIN!"=="" (
 )
 
 echo         مخزن «!GH_USER!/!GH_REPO!» روی گیت‌هاب پیدا نشد.
-if "%NONSTOP%"=="" (
-  set "MK="
-  set /p "MK=        مخزن خصوصی با همین نام ساخته شود؟ [Y/n]: "
-  if /i "!MK!"=="n" (
-    echo             لغو شد. برای تغییر نام کاربری/مخزن: git-push.bat reset
-    goto :fail
-  )
+if not "%NONSTOP%"=="" goto :do_create
+set "MK="
+set /p "MK=        مخزن خصوصی با همین نام ساخته شود؟ [Y/n]: "
+if /i "!MK!"=="n" (
+  echo             لغو شد. برای تغییر مقصد: git-push.bat reset
+  goto :fail
 )
+
+:do_create
 echo         در حال ساخت مخزن ...
 call :api_create
 if "!API_MSG!"=="OK" (
@@ -296,14 +294,14 @@ if "!API_MSG!"=="OK" (
   goto :repo_ready
 )
 if "!API_MSG!"=="" (
-  echo         [i] ساخت خودکار انجام نشد؛ بدون پاسخ از گیت‌هاب — اینترنت یا پاورشل.
+  echo         [i] ساخت خودکار انجام نشد؛ بدون پاسخ از گیت‌هاب. اینترنت یا پاورشل را بررسی کنید.
 ) else (
   echo         [i] ساخت خودکار انجام نشد. کد خطا: !API_MSG!
 )
 if "!API_MSG!"=="ERR401" echo             توکن نامعتبر یا منقضی است؛ توکن تازه بسازید.
 if "!API_MSG!"=="ERR403" echo             توکن اجازه‌ی ساخت مخزن ندارد؛ اسکوپ repo لازم است.
-if "!API_MSG!"=="ERR422" echo             مخزنی با این نام از قبل وجود دارد (شاید در حساب دیگری).
-echo             اگر مخزن ساخته شده مهم نیست؛ در غیر این صورت: https://github.com/new
+if "!API_MSG!"=="ERR422" echo             مخزنی با این نام از قبل وجود دارد؛ شاید در حساب دیگری.
+echo             اگر مخزن ساخته شده مهم نیست؛ در غیر این صورت یکی بسازید: https://github.com/new
 
 :repo_ready
 set "REMOTE_URL=https://github.com/!GH_USER!/!GH_REPO!.git"
@@ -327,101 +325,92 @@ if errorlevel 1 (
 )
 
 REM ============================================================
-REM  6) نسخه‌ی پروژه و کامیت تغییرات
+REM  6) هم‌سان‌سازی تاریخچه و ثبت تغییرات
 REM ============================================================
 if exist "app\web.py" (
   for /f "tokens=3 delims= " %%v in ('findstr /b /c:"VERSION = " app\web.py 2^>nul') do set "VER=%%~v"
 )
-if not "%VER%"=="" echo   [i] نسخه‌ی پروژه: %VER%
+if not "!VER!"=="" echo   [i] نسخه‌ی پروژه: !VER!
 
-echo   [6/8] ثبت تغییرات محلی ...
-git add -A
-set "HASCHANGE="
-for /f "delims=" %%s in ('git status --porcelain 2^>nul') do set "HASCHANGE=1"
-if defined HASCHANGE (
-  set "MSG="
-  if "%NONSTOP%"=="" set /p "MSG=        پیام کامیت، خالی یعنی خودکار: "
-  if "!MSG!"=="" (
-    if "!VER!"=="" (
-      set "MSG=update: sync files"
-    ) else (
-      set "MSG=update: v!VER! - sync files"
-    )
-  )
-  git commit -q -m "!MSG!"
-  echo         [OK] کامیت ثبت شد: !MSG!
-) else (
-  echo         [i] تغییر جدیدی برای کامیت نیست.
-)
+echo   [6/8] هم‌سان‌سازی با مخزن گیت و ثبت تغییرات ...
+call :sync_history
+call :do_commit
 
 REM ============================================================
 REM  7) ارسال به گیت‌هاب
 REM ============================================================
 echo   [7/8] ارسال به گیت‌هاب ...
 call :do_push
+
 if not "!RC!"=="0" (
   echo:
-  echo         ارسال رد شد؛ هم‌سان‌سازی تاریخچه با ریموت ...
-  call :do_pull
-  set "CONFLICT="
-  if exist ".git\rebase-merge" set "CONFLICT=1"
-  if exist ".git\rebase-apply" set "CONFLICT=1"
-  if exist ".git\MERGE_HEAD" set "CONFLICT=1"
-  if defined CONFLICT (
-    echo         [i] بین فایل‌های محلی و نسخه‌ی روی گیت تعارض بود.
-    git rebase --abort >nul 2>nul
-    git merge --abort >nul 2>nul
-    echo             وضعیت به قبل برگشت و هیچ فایلی پاک نشد.
-    echo             یعنی نسخه‌ی روی گیت و نسخه‌ی این سیستم هر دو دست‌نخورده‌اند.
-  ) else (
-    if "!RC!"=="0" call :do_push
-  )
-  if not "!RC!"=="0" (
-    echo:
-    echo         [i] هم‌سان‌سازی هم موفق نشد.
-    findstr /i /c:"Authentication failed" /c:"Permission" /c:"403" "%TMP_LOG%" >nul 2>nul
-    if not errorlevel 1 echo             علت احتمالی: توکن اشتباه است یا اسکوپ repo ندارد.
-    findstr /i /c:"Repository not found" /c:"not found" "%TMP_LOG%" >nul 2>nul
-    if not errorlevel 1 echo             علت احتمالی: نام کاربری یا نام مخزن اشتباه است.
-    if "%NONSTOP%"=="" (
-      echo             راه دیگر: روی گیت، فایل‌های هم‌نام را دستی اصلاح کنید
-      echo             یا اجازه دهید نسخه‌ی این سیستم جایگزین نسخه‌ی روی گیت شود.
-      set "F="
-      set /p "F=        جای‌نویسی با اجبار انجام شود؟ [y/N]: "
-      if /i "!F!"=="y" call :do_force
-    )
+  echo         ارسال رد شد؛ یک‌بار دیگر هم‌سان‌سازی و تلاش مجدد ...
+  call :sync_history
+  call :do_commit
+  call :do_push
+)
+
+if not "!RC!"=="0" (
+  echo:
+  echo         [i] ارسال معمولی ممکن نشد.
+  echo             این حالت وقتی رخ می‌دهد که مخزن گیت تغییراتی داشته باشد
+  echo             که در این نسخه نیست؛ یا دسترسی توکن کافی نباشد.
+  if "%NONSTOP%"=="" (
+    echo             راه دیگر: نسخه‌ی این سیستم جایگزین نسخه‌ی روی گیت شود.
+    set "F="
+    set /p "F=        جایگزینی اجباری انجام شود؟ [y/N]: "
+    if /i "!F!"=="y" call :do_force
   )
 )
 
 if not "!RC!"=="0" goto :fail
 
-git update-ref "refs/remotes/origin/%GH_BRANCH%" HEAD 2>nul
-git config "branch.%GH_BRANCH%.remote" "origin" 2>nul
-git config "branch.%GH_BRANCH%.merge" "refs/heads/%GH_BRANCH%" 2>nul
+git update-ref "refs/remotes/origin/%GH_BRANCH%" HEAD >nul 2>nul
+git config "branch.%GH_BRANCH%.remote" "origin" >nul 2>nul
+git config "branch.%GH_BRANCH%.merge" "refs/heads/%GH_BRANCH%" >nul 2>nul
 
 REM ============================================================
 REM  8) تگ نسخه و آپلود اختیاری فایل نصبی
 REM ============================================================
-if "%VER%"=="" (
+if "!VER!"=="" (
   echo   [8/8] نسخه‌ی پروژه پیدا نشد؛ از تگ صرف‌نظر شد.
-  goto :summary
+  goto :asset
 )
 
-git rev-parse "v%VER%" >nul 2>nul
-if errorlevel 1 (
-  git tag -a "v%VER%" -m "release v%VER%"
-  call :do_push_tag
-  if "!RC!"=="0" (
-    echo   [8/8] تگ v%VER% ساخته و ارسال شد.
-  ) else (
-    echo   [8/8] ارسال تگ ناموفق بود - خودِ فایل‌ها ارسال شده‌اند.
-  )
+set "HEAD_SHA="
+for /f "delims=" %%h in ('git rev-parse --verify HEAD 2^>nul') do set "HEAD_SHA=%%h"
+set "TAG_SHA="
+for /f "delims=" %%h in ('git rev-parse --verify "refs/tags/v!VER!" 2^>nul') do set "TAG_SHA=%%h"
+
+if "!TAG_SHA!"=="" (
+  git tag "v!VER!" >> "%TMP_LOG%" 2>&1
+  echo         تگ v!VER! روی کامیت فعلی ساخته شد.
 ) else (
-  echo   [8/8] تگ v%VER% از قبل وجود دارد.
+  if /i not "!TAG_SHA!"=="!HEAD_SHA!" (
+    git tag -d "v!VER!" >> "%TMP_LOG%" 2>&1
+    git tag "v!VER!" >> "%TMP_LOG%" 2>&1
+    echo         [i] تگ v!VER! به کامیت فعلی منتقل شد.
+  ) else (
+    echo         [i] تگ v!VER! از قبل روی همین کامیت است.
+  )
 )
+
+call :do_push_tag
+if "!RC!"=="0" (
+  echo   [8/8] تگ v!VER! ارسال شد.
+) else (
+  echo         تگ v!VER! روی گیت وجود دارد؛ در حال به‌روزرسانی ...
+  call :do_push_tag_force
+  if "!RC!"=="0" (
+    echo   [8/8] تگ v!VER! به‌روزرسانی شد.
+  ) else (
+    echo   [8/8] به‌روزرسانی تگ انجام نشد — خودِ فایل‌ها ارسال شده‌اند.
+  )
+)
+
+:asset
 call :maybe_asset
 
-:summary
 echo:
 echo +------------------------------------------------------------+
 echo ^|                       پایان - موفق                         ^|
@@ -444,16 +433,63 @@ REM ============================================================
 REM                       زیربرنامه‌ها
 REM ============================================================
 
-:api_get
-REM بررسی وجود یک مسیر روی API گیت‌هاب — %1 مسیر، نتیجه در API_MSG
-set "API_MSG="
-for /f "usebackq delims=" %%r in (`%PSH% "%TLS% try{ Invoke-RestMethod -Uri 'https://api.github.com/%1' -Headers @{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'} -ErrorAction Stop | Out-Null; 'EXISTS' } catch { $c=$_.Exception.Response.StatusCode.value__; if($c){'ERR'+$c}else{'ERR0'} }" 2^>nul`) do set "API_MSG=%%r"
+:sync_history
+REM تاریخچه‌ی محلی را با مخزن گیت هم‌سو می‌کند تا ارسال بدون تعارض انجام شود.
+REM فایل‌های کاری هرگز پاک یا بازنویسی نمی‌شوند؛ فقط پایه‌ی تاریخچه تنظیم می‌شود.
+set "KEPT=0"
+git fetch "%AUTH_URL%" "%GH_BRANCH%" > "%TMP_LOG%" 2>&1
+if not "!ERRORLEVEL!"=="0" goto :eof
+
+set "REMOTE_TIP="
+for /f "delims=" %%h in ('git rev-parse --verify FETCH_HEAD 2^>nul') do set "REMOTE_TIP=%%h"
+if "!REMOTE_TIP!"=="" goto :eof
+
+set "LOCAL_TIP="
+for /f "delims=" %%h in ('git rev-parse --verify HEAD 2^>nul') do set "LOCAL_TIP=%%h"
+if /i "!REMOTE_TIP!"=="!LOCAL_TIP!" goto :eof
+
+git merge-base "!LOCAL_TIP!" "!REMOTE_TIP!" >nul 2>nul
+if not "!ERRORLEVEL!"=="0" goto :sync_align
+
+echo         [i] تاریخچه مشترک است؛ تغییرات گیت ادغام می‌شود ...
+git pull --rebase "%AUTH_URL%" "%GH_BRANCH%" > "%TMP_LOG%" 2>&1
+if "!ERRORLEVEL!"=="0" (
+  echo         [i] ادغام انجام شد.
+  goto :eof
+)
+git rebase --abort >nul 2>nul
+git merge --abort >nul 2>nul
+echo         [i] ادغام ممکن نبود؛ تاریخچه هم‌سو می‌شود. فایل‌های شما دست‌نخورده می‌مانند.
+
+:sync_align
+git reset --soft "!REMOTE_TIP!" >nul 2>nul
+git read-tree "!REMOTE_TIP!" >nul 2>nul
+for /f "delims=" %%p in ('git ls-tree -r --name-only "!REMOTE_TIP!" 2^>nul') do (
+  if not exist "%%p" (
+    git checkout "!REMOTE_TIP!" -- "%%p" >nul 2>nul
+    set /a KEPT+=1
+  )
+)
+echo         [i] تاریخچه با مخزن گیت هم‌سو شد؛ کامیت‌های قبلی گیت حفظ می‌شوند.
+if not "!KEPT!"=="0" echo         [i] !KEPT! فایل که فقط روی گیت بود، حفظ شد.
 goto :eof
 
-:api_create
-REM ساخت مخزن خصوصی زیر حساب صاحب توکن — نتیجه در API_MSG
-set "API_MSG="
-for /f "usebackq delims=" %%r in (`%PSH% "%TLS% $b=@{name='%GH_REPO%';private=$true} | ConvertTo-Json; try{ Invoke-RestMethod -Uri 'https://api.github.com/user/repos' -Method Post -Headers @{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'} -ContentType 'application/json' -Body $b -ErrorAction Stop | Out-Null; 'OK' } catch { $c=$_.Exception.Response.StatusCode.value__; if($c){'ERR'+$c}else{'ERR0'} }" 2^>nul`) do set "API_MSG=%%r"
+:do_commit
+git add -A
+set "HASCHANGE="
+for /f "delims=" %%s in ('git status --porcelain 2^>nul') do set "HASCHANGE=1"
+if not defined HASCHANGE (
+  echo         [i] تغییر جدیدی برای ثبت نیست.
+  goto :eof
+)
+set "MSG="
+if "%NONSTOP%"=="" set /p "MSG=        پیام کامیت، خالی یعنی خودکار: "
+if "!MSG!"=="" (
+  set "MSG=update: sync files"
+  if not "!VER!"=="" set "MSG=update: v!VER! - sync files"
+)
+git commit -q -m "!MSG!"
+echo         [OK] ثبت شد: !MSG!
 goto :eof
 
 :load_token
@@ -463,24 +499,36 @@ goto :eof
 :ask_token
 set "GH_TOKEN="
 for /f "usebackq delims=" %%t in (`%PSH% "$s=Read-Host -AsSecureString '        توکن را بچسبانید و Enter بزنید'; $b=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s); [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b)" 2^>nul`) do set "GH_TOKEN=%%t"
-if "%GH_TOKEN%"=="" (
+if "!GH_TOKEN!"=="" (
   echo         [i] ورودی مخفی در دسترس نبود؛ توکن نمایان تایپ می‌شود.
   set /p "GH_TOKEN=        توکن: "
 )
-if "%GH_TOKEN%"=="" goto :eof
+if "!GH_TOKEN!"=="" goto :eof
 if not "%NONSTOP%"=="" goto :eof
 
 set "SV="
 set /p "SV=        برای اجراهای بعدی ذخیره شود؟ رمزنگاری‌شده در پروفایل ویندوز [Y/n]: "
-if /i "%SV%"=="n" goto :eof
+if /i "!SV!"=="n" goto :eof
 if not exist "%CFG_DIR%" mkdir "%CFG_DIR%" >nul 2>nul
 %PSH% "$s=ConvertTo-SecureString '%GH_TOKEN%' -AsPlainText -Force; ConvertFrom-SecureString $s | Set-Content -LiteralPath '%TOK_FILE%' -NoNewline" >nul 2>nul
 if exist "%TOK_FILE%" (
-  > "%CFG_FILE%" echo user=%GH_USER%
-  >>"%CFG_FILE%" echo repo=%GH_REPO%
-  >>"%CFG_FILE%" echo branch=%GH_BRANCH%
+  > "%CFG_FILE%" echo user=!GH_USER!
+  >>"%CFG_FILE%" echo repo=!GH_REPO!
+  >>"%CFG_FILE%" echo branch=!GH_BRANCH!
   echo         [OK] توکن و تنظیمات ذخیره شد. اجرای بعدی: یک کلیک.
 )
+goto :eof
+
+:api_get
+REM وجود یک مسیر روی API گیت‌هاب — %1 مسیر، نتیجه در API_MSG
+set "API_MSG="
+for /f "usebackq delims=" %%r in (`%PSH% "%TLS% try{ Invoke-RestMethod -Uri 'https://api.github.com/%1' -Headers @{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'} -ErrorAction Stop | Out-Null; 'EXISTS' } catch { $c=$_.Exception.Response.StatusCode.value__; if($c){'ERR'+$c}else{'ERR0'} }" 2^>nul`) do set "API_MSG=%%r"
+goto :eof
+
+:api_create
+REM ساخت مخزن خصوصی زیر حساب صاحب توکن — نتیجه در API_MSG
+set "API_MSG="
+for /f "usebackq delims=" %%r in (`%PSH% "%TLS% $b=@{name='%GH_REPO%';private=$true} | ConvertTo-Json; try{ Invoke-RestMethod -Uri 'https://api.github.com/user/repos' -Method Post -Headers @{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'} -ContentType 'application/json' -Body $b -ErrorAction Stop | Out-Null; 'OK' } catch { $c=$_.Exception.Response.StatusCode.value__; if($c){'ERR'+$c}else{'ERR0'} }" 2^>nul`) do set "API_MSG=%%r"
 goto :eof
 
 :do_push
@@ -499,40 +547,44 @@ goto :eof
 
 :do_push_tag
 set "RC=1"
-git -c credential.helper= push "%AUTH_URL%" "v%VER%" > "%TMP_LOG%" 2>&1
+git -c credential.helper= push "%AUTH_URL%" "refs/tags/v!VER!" > "%TMP_LOG%" 2>&1
 set "RC=!ERRORLEVEL!"
 call :show_log
 goto :eof
 
-:do_pull
+:do_push_tag_force
 set "RC=1"
-git -c credential.helper= pull "%AUTH_URL%" "%GH_BRANCH%" --rebase --allow-unrelated-histories > "%TMP_LOG%" 2>&1
+git -c credential.helper= push --force "%AUTH_URL%" "refs/tags/v!VER!" > "%TMP_LOG%" 2>&1
 set "RC=!ERRORLEVEL!"
 call :show_log
 goto :eof
 
-REM چاپ خروجی گیت با پاک‌سازی توکن
 :show_log
 if not exist "%TMP_LOG%" goto :eof
-%PSH% "(Get-Content -LiteralPath '%TMP_LOG%' -Raw) -replace '%GH_TOKEN%','****' | Write-Host -NoNewline" 2>nul
+%PSH% "(Get-Content -LiteralPath '%TMP_LOG%' -Raw) -replace [regex]::Escape('%GH_TOKEN%'),'****' | Write-Host -NoNewline" 2>nul
 if not "!RC!"=="0" echo         [X] دستور گیت با کد !RC! تمام شد.
 goto :eof
 
-REM آپلود اختیاری فایل بسته به‌عنوان دارایی نسخه در گیت‌هاب
 :maybe_asset
+REM جستجوی بسته‌ی نصبی در پوشه‌ی پروژه و پوشه‌ی والد
 set "ART="
-for %%f in (sarrafi-*.tar.gz) do set "ART=%%f"
-if not exist "%ART%" set "ART="
-if "%ART%"=="" goto :eof
-if "%NONSTOP%"=="" (
-  set "U="
-  set /p "U=        فایل %ART% به‌عنوان دارایی نسخه v%VER% آپلود شود؟ [y/N]: "
-  if /i not "!U!"=="y" goto :eof
+for %%d in ("%~dp0." "%~dp0..") do (
+  if not defined ART (
+    for /f "delims=" %%f in ('dir /b /o-d "%%~fd\sarrafi-*.tar.gz" 2^>nul') do (
+      if not defined ART set "ART=%%~fd\%%f"
+    )
+  )
 )
+if not defined ART goto :eof
+if not exist "%ART%" goto :eof
+if not "%NONSTOP%"=="" goto :eof
+set "U="
+set /p "U=        فایل بسته به‌عنوان دارایی نسخه v!VER! آپلود شود؟ [y/N]: "
+if /i not "!U!"=="y" goto :eof
 echo         در حال آپلود %ART% ...
 %PSH% "%TLS% $h=@{'User-Agent'='sarrafi';Authorization='token %GH_TOKEN%'}; try{ $r=Invoke-RestMethod -Uri 'https://api.github.com/repos/%GH_USER%/%GH_REPO%/releases/tags/v%VER%' -Headers $h -ErrorAction Stop } catch { $b=@{tag_name='v%VER%';name='v%VER%'} | ConvertTo-Json; $r=Invoke-RestMethod -Uri 'https://api.github.com/repos/%GH_USER%/%GH_REPO%/releases' -Method Post -Headers $h -ContentType 'application/json' -Body $b -ErrorAction Stop }; $u='https://uploads.github.com/repos/%GH_USER%/%GH_REPO%/releases/'+$r.id+'/assets?name=%ART%'; Invoke-RestMethod -Uri $u -Method Post -Headers $h -ContentType 'application/gzip' -InFile '%ART%' -ErrorAction Stop | Out-Null; exit 0" >nul 2>nul
 if errorlevel 1 (
-  echo         [i] آپلود انجام نشد. فایل ممکن است بزرگ باشد یا توکن اجازه نداشته باشد.
+  echo         [i] آپلود انجام نشد؛ فایل ممکن است بزرگ باشد یا توکن اجازه نداشته باشد.
 ) else (
   echo         [OK] فایل در صفحه‌ی Releases گیت‌هاب قرار گرفت.
 )

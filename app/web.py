@@ -51,6 +51,12 @@ def _rate_check(key, max_req, window_sec):
         _RATE_LIMITS[key] = hits
         return True
 
+def reset_rate_limits():
+    """پاک‌کردن پنجره‌ی محدودیت نرخ — برای تست‌ها و راه‌اندازی مجدد سرویس."""
+    with _RATE_LOCK:
+        _RATE_LIMITS.clear()
+
+
 ROLE_PERMS = permissions.ROLE_PERMS
 ROLE_FA = permissions.ROLE_FA
 
