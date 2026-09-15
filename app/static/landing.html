@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>صرافی — سامانه ابری مدیریت صرافی و صندوق ارزی</title>
+<meta name="description" content="سامانه ابری صرافی: خرید و فروش ارز، اسکناس با تشخیص تصویری سریال، چند صندوق، قرض و تسهیلات، فاکتور، گزارش و نمودار، بکاپ رمزنگاری‌شده.">
+<style>
+  :root { --bg:#070d1a; --bg2:#0e1730; --card:#101a34; --line:#1d2a4a; --tx:#e7eef9; --mut:#8fa0bd; --acc:#38bdf8; --grn:#34d399; --amb:#fbbf24; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--tx); font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif; line-height:1.9; }
+  a { color:var(--acc); text-decoration:none; }
+  .wrap { max-width:1100px; margin:0 auto; padding:0 20px; }
+  header { border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(7,13,26,.85); backdrop-filter:blur(8px); z-index:10; }
+  .nav { display:flex; align-items:center; justify-content:space-between; padding:16px 0; }
+  .brand { font-weight:900; font-size:20px; display:flex; align-items:center; gap:10px; }
+  .brand .logo { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,var(--acc),#7c3aed); display:grid; place-items:center; font-size:18px; }
+  .nav-links { display:flex; gap:22px; align-items:center; font-size:14.5px; }
+  .nav-links a { color:var(--mut); } .nav-links a:hover { color:var(--tx); }
+  .btn { display:inline-block; padding:11px 22px; border-radius:12px; font-weight:800; font-size:14.5px; cursor:pointer; border:1px solid transparent; }
+  .btn.primary { background:linear-gradient(135deg,var(--acc),#0ea5e9); color:#04283c; }
+  .btn.ghost { border-color:var(--line); color:var(--tx); }
+  .hero { text-align:center; padding:84px 0 60px; }
+  .hero h1 { font-size:44px; font-weight:900; line-height:1.5; }
+  .hero h1 .grad { background:linear-gradient(120deg,var(--acc),#a78bfa); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p { color:var(--mut); max-width:640px; margin:20px auto 30px; font-size:16.5px; }
+  .hero .cta { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:44px 0; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; text-align:center; }
+  .stat b { font-size:24px; font-weight:900; color:var(--acc); }
+  .stat span { display:block; color:var(--mut); font-size:13px; }
+  h2 { font-size:28px; font-weight:900; margin-bottom:26px; text-align:center; }
+  .features { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:20px 0 60px; }
+  .feat { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; }
+  .feat .ic { font-size:26px; }
+  .feat h3 { font-size:16.5px; margin:12px 0 6px; }
+  .feat p { color:var(--mut); font-size:13.5px; }
+  .pricing { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:20px 0 60px; }
+  .plan { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px; position:relative; }
+  .plan.pop { border-color:var(--acc); box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .plan .tag { position:absolute; top:-12px; right:22px; background:var(--acc); color:#04283c; font-size:11.5px; font-weight:800; padding:3px 12px; border-radius:999px; }
+  .plan h3 { font-size:18px; }
+  .plan .price { font-size:30px; font-weight:900; color:var(--acc); margin:10px 0 4px; }
+  .plan .per { color:var(--mut); font-size:12.5px; }
+  .plan ul { list-style:none; margin:16px 0 22px; }
+  .plan li { font-size:13.5px; color:var(--mut); padding:5px 0; }
+  .plan li::before { content:'✔ '; color:var(--grn); }
+  footer { border-top:1px solid var(--line); padding:34px 0; color:var(--mut); font-size:13px; text-align:center; }
+  @media (max-width:820px){ .features,.pricing,.stats{ grid-template-columns:1fr 1fr; } .hero h1{font-size:32px;} }
+  @media (max-width:520px){ .features,.pricing,.stats{ grid-template-columns:1fr; } .nav-links{display:none;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand"><span class="logo">💱</span> صرافی</div>
+    <nav class="nav-links">
+      <a href="#features">امکانات</a>
+      <a href="#pricing">تعرفه‌ها</a>
+      <a href="#faq">سوالات</a>
+      <a class="btn ghost" href="/#/">ورود / ثبت‌نام</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero wrap">
+  <h1>سامانه ابری مدیریت <span class="grad">صرافی و صندوق ارزی</span></h1>
+  <p>خرید و فروش ارز با چند نرخ، ثبت اسکناس با تشخیص تصویری سریال، چند صندوق، قرض و تسهیلات، فاکتور و صورتحساب، گزارش‌ها و نمودارهای خودکار، بکاپ رمزنگاری‌شده — همه در یک نرم‌افزار فارسی و راست‌به‌چپ.</p>
+  <div class="cta">
+    <a class="btn primary" href="/#/">شروع رایگان — ورود به سامانه</a>
+    <a class="btn ghost" href="#features">مشاهده امکانات</a>
+  </div>
+</section>
+
+<section class="wrap" id="stats">
+  <div class="stats">
+    <div class="stat"><b>۴ نوع نرخ</b><span>بازار / خرید / فروش / سنا</span></div>
+    <div class="stat"><b>+۱۰۰٪</b><span>دقت ثبت با تأیید سریال</span></div>
+    <div class="stat"><b>۲۴/۷</b><span>دسترسی از هر دستگاه</span></div>
+    <div class="stat"><b>نامحدود</b><span>صندوق، کاربر و فاکتور</span></div>
+  </div>
+</section>
+
+<section class="wrap" id="features">
+  <h2>امکانات کلیدی</h2>
+  <div class="features">
+    <div class="feat"><div class="ic">💱</div><h3>خرید و فروش چندنرخی</h3><p>نرخ بازار، خرید، فروش و سنا به‌همراه کارمزد و مالیات روی هر فاکتور.</p></div>
+    <div class="feat"><div class="ic">📷</div><h3>تشخیص تصویری اسکناس</h3><p>ثبت گروهی اسکناس از یک عکس با تشخیص سریال، ارزش و امتیاز اطمینان رنگی.</p></div>
+    <div class="feat"><div class="ic">🏦</div><h3>چند صندوق</h3><p>صندوق فیزیکی و بانکی با تعریف و نام‌گذاری دلخواه و انتقال بین صندوق‌ها.</p></div>
+    <div class="feat"><div class="ic">🤝</div><h3>قرض و تسهیلات</h3><p>دریافت/اعطای قرض ریالی و ارزی با سررسید و یادآور خودکار.</p></div>
+    <div class="feat"><div class="ic">🧾</div><h3>فاکتور و صورتحساب</h3><p>فاکتور خرید/فروش، تسویه چندفاکتوره، رسید قابل چاپ زیبا.</p></div>
+    <div class="feat"><div class="ic">📊</div><h3>گزارش و نمودار</h3><p>سود و زیان، گردش صندوق، مقایسه ماهانه و تحلیل خودکار بدون کدنویسی.</p></div>
+    <div class="feat"><div class="ic">🔍</div><h3>جستجوی سراسری</h3><p>پیدا کردن مشتری، فاکتور، سند، اسکناس و قرض از یک جعبه جستجو.</p></div>
+    <div class="feat"><div class="ic">🔔</div><h3>اعلان‌های هوشمند</h3><p>سررسید قرض‌ها، کف موجودی ارزها و عبور از سقف اعتبار مشتری.</p></div>
+    <div class="feat"><div class="ic">🔐</div><h3>بکاپ رمزنگاری‌شده</h3><p>پشتیبان‌گیری خودکار با عبارت عبور (AES) و بازیابی یک‌کلیک.</p></div>
+  </div>
+</section>
+
+<section class="wrap" id="pricing">
+  <h2>تعرفه‌ها</h2>
+  <div class="pricing">
+    <div class="plan">
+      <h3>رایگان</h3>
+      <div class="price">۰ ریال</div><div class="per">برای همیشه</div>
+      <ul><li>حداکثر ۵ کاربر</li><li>۵ صندوق</li><li>تا ۲٬۰۰۰ فاکتور</li><li>پشتیبانی انجمن</li></ul>
+      <a class="btn ghost" href="/#/">شروع کنید</a>
+    </div>
+    <div class="plan pop">
+      <span class="tag">پیشنهاد ما</span>
+      <h3>حرفه‌ای</h3>
+      <div class="price">۳٬۵۰۰٬۰۰۰ ریال</div><div class="per">ماهانه</div>
+      <ul><li>کاربر، صندوق و فاکتور نامحدود</li><li>بکاپ رمزنگاری‌شده</li><li>پشتیبانی اولویت‌دار</li><li>همه امکانات پیشرفته</li></ul>
+      <a class="btn primary" href="/#/">انتخاب پلن حرفه‌ای</a>
+    </div>
+    <div class="plan">
+      <h3>سازمانی</h3>
+      <div class="price">۱۲٬۰۰۰٬۰۰۰ ریال</div><div class="per">ماهانه</div>
+      <ul><li>چند شعبه</li><li>API اختصاصی</li><li>سرور مستقل</li><li>پشتیبانی ۲۴/۷</li></ul>
+      <a class="btn ghost" href="/#/">تماس با فروش</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">سامانه صرافی — نسخه ۰.۶ · ساخته‌شده برای مدیریت دقیق و امن صرافی‌ها · داده‌ها روی سرور شما ذخیره می‌شوند.</div>
+</footer>
+</body>
+</html>

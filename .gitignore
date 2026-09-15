@@ -1,0 +1,28 @@
+# پایتون
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# داده‌ی مالی (هرگز کامیت نشود)
+data/*.db
+data/*.db-*
+data/uploads/
+data/backups/
+
+# فایل‌های موقت
+*.log
+.DS_Store
+Thumbs.db
+
+# باندل آفلاین (دانلود یک‌باره؛ در ریپو نگهداری نمی‌شود)
+wheels/
+
+# تنظیمات محلی و کلیدها (هرگز کامیت نشود)
+.env
+.env.local
+
+# بسته‌های خروجی
+*.tar.gz
+*.zip

@@ -1,0 +1,48 @@
+# اجرای سیستم صرافی با داکر (SQLite یا PostgreSQL)
+#
+#   1) حالت ساده (SQLite داخلی):
+#        docker compose up --build
+#
+#   2) حالت تولید (PostgreSQL):
+#        cp .env.example .env   # و SARRAFI_DATABASE_URL را تنظیم کنید
+#        docker compose --profile postgres up --build
+#
+# سپس: http://localhost:8000
+
+services:
+  sarrafi:
+    build: .
+    container_name: sarrafi
+    ports:
+      - "8000:8000"
+    environment:
+      - SARRAFI_PORT=8000
+      - SARRAFI_DATABASE_URL=${SARRAFI_DATABASE_URL:-}
+      - SARRAFI_AUTH_REQUIRED=${SARRAFI_AUTH_REQUIRED:-0}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    container_name: sarrafi-db
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: sarrafi
+      POSTGRES_PASSWORD: sarrafi
+      POSTGRES_DB: sarrafi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sarrafi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:

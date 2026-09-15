@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1220">
+<title>صرافی — سامانه مدیریت خرید و فروش ارز</title>
+<link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/img/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/vendor/DatePicker.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ سایدبار ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <img src="/static/img/logo.svg" alt="لوگو" class="brand-logo" id="brandLogo">
+      <div class="brand-text">
+        <strong id="brandName">صرافی</strong>
+        <span>سامانه مدیریت ارز</span>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <div class="instant" id="instantBalances">در حال بارگذاری…</div>
+    </div>
+  </aside>
+
+  <!-- ============ محتوا ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="منو">☰</button>
+      <h1 id="pageTitle">داشبورد</h1>
+      <div class="topbar-actions">
+        <span class="date-chip" id="todayChip"></span>
+        <div class="global-search" id="globalSearchWrap">
+          <input id="globalSearch" type="search" placeholder="جستجوی سراسری… ( / )" autocomplete="off">
+          <div class="search-results" id="searchResults" style="display:none"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm notif-btn" id="notifBtn" title="اعلان‌ها">
+          🔔<span class="badge-dot" id="bellBadge" style="display:none"></span>
+        </button>
+        <div class="notif-panel" id="notifPanel" style="display:none"></div>
+        <button class="btn btn-ghost btn-sm" id="installBtn" style="display:none">⬇ نصب برنامه</button>
+        <button class="btn btn-ghost btn-sm" id="helpBtn" title="راهنمای تعاملی">؟ راهنما</button>
+        <button class="btn btn-ghost btn-sm" id="themeBtn" title="تغییر تم">☀️</button>
+        <div class="user-chip" id="userChip">
+          <span class="avatar" id="userAvatar">م</span>
+          <span class="user-name" id="userName">مدیر سیستم</span>
+          <span class="user-role" id="userRole">مدیر</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="loginBtn">ورود / ثبت‌نام</button>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none">خروج</button>
+      </div>
+    </header>
+    <div class="imp-banner" id="impersonationBanner" style="display:none">
+      <span id="impersonationText"></span>
+      <button class="btn xs warn" id="endViewBtn">بازگشت به حساب خودم</button>
+    </div>
+    <main class="content" id="content">
+      <div class="loader">در حال بارگذاری…</div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ توست ============ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ============ مودال ============ -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script src="/static/vendor/DatePicker.js"></script>
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/app.js"></script>
+<script>
+// ثبت Service Worker (PWA) — در iframe پیش‌نمایش ممکن است در دسترس نباشد
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/static/sw.js').catch(function(){});
+  });
+}
+// مدیریت دکمه‌ی نصب
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  var b = document.getElementById('installBtn');
+  if (b) b.style.display = '';
+});
+document.getElementById('installBtn').addEventListener('click', function(){
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; this.style.display='none'; }
+});
+</script>
+</body>
+</html>
