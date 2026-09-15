@@ -30,12 +30,47 @@ _pg_pool = None
 _pg_lock = threading.Lock()
 
 
+# وقتی مسیر دیتابیس به‌صورت صریح داده می‌شود (تست‌ها، اجرای چند نمونه‌ای)،
+# حتی اگر SARRAFI_DATABASE_URL تنظیم باشد همان فایل SQLite استفاده می‌شود.
+_INSTANCE_SQLITE = False
+
+
+_DEFAULT_DB_PATH = DB_PATH
+
+
+def use_sqlite(path=None):
+    """اجبار این نمونه به SQLite (با اولویت بر SARRAFI_DATABASE_URL).
+
+    ``path=None`` یعنی برداشتن اجبار و بازگشت به تنظیمات محیطی؛ برای پایان
+    یافتن تست‌هایی که روی فایل موقت اجرا می‌شوند لازم است.
+    """
+    global DB_PATH, _INSTANCE_SQLITE
+    if path is None:
+        _INSTANCE_SQLITE = False
+        DB_PATH = _DEFAULT_DB_PATH
+        return
+    DB_PATH = path
+    _INSTANCE_SQLITE = True
+
+
 def engine(db_path=None):
     if db_path:
+        return "sqlite"
+    if _INSTANCE_SQLITE:
         return "sqlite"
     if PG_URL and PG_URL.startswith(("postgres://", "postgresql://")):
         return "postgres"
     return "sqlite"
+
+
+def conn_engine(conn):
+    """نوع موتور بر اساس خودِ اتصال — مرجع مطمئن برای انتخاب SQL.
+
+    تفاوت با engine(): آن تابع «تنظیمات نمونه» را می‌گوید، این تابع «اتصالی که
+    همین حالا در دست است». اگر این دو یکی فرض شوند، هنگام اجرای هم‌زمان SQLite و
+    PostgreSQL (مثلاً تست‌ها با فایل موقت در کنار PG_URL) SQL اشتباه انتخاب می‌شود.
+    """
+    return "postgres" if getattr(conn, "is_postgres", False) else "sqlite"
 
 
 # ---------------------------------------------------------------------------
@@ -561,7 +596,7 @@ def _to_postgres(stmt):
 def _add_column(conn, table, col, typ):
     """افزودن ستون در صورت نبود (SQLite و PG)"""
     try:
-        if engine() == "postgres":
+        if conn_engine(conn) == "postgres":
             conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {typ}")
         else:
             cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
@@ -573,7 +608,7 @@ def _add_column(conn, table, col, typ):
 
 def _migrate_exchange_rates(conn):
     """چندنرخی: افزودن rate_type و تغییر قید یکتا به (account, currency, date, type)"""
-    if engine() == "postgres":
+    if conn_engine(conn) == "postgres":
         _add_column(conn, "exchange_rates", "rate_type", "TEXT")
         try:
             conn.execute("ALTER TABLE exchange_rates "
@@ -623,6 +658,8 @@ def _migrate_exchange_rates(conn):
 # ---------------------------------------------------------------------------
 class _PGConn:
     """پوشش اتصال PostgreSQL با رفتار مشابه sqlite3.Connection"""
+
+    is_postgres = True
 
     def __init__(self, raw):
         self.raw = raw

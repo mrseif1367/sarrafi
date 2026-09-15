@@ -64,7 +64,8 @@ jobs:
         run: |
           pip install pytest pillow psycopg2-binary reportlab
           pip install arabic_reshaper python-bidi numpy opencv-python-headless
-      - name: Run integration tests on PostgreSQL
+          pip install pytesseract openpyxl
+      - name: Run full suite on PostgreSQL (شامل تست یکپارچه‌سازی)
         env:
           SARRAFI_DATABASE_URL: postgresql://sarrafi:sarrafi@127.0.0.1:5432/sarrafi
         run: python -m pytest tests/ -q

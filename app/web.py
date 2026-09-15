@@ -1546,7 +1546,7 @@ class Handler(BaseHTTPRequestHandler):
                 return {"error": "دسترسی ندارید"}, 403
             os.makedirs(BACKUP_DIR, exist_ok=True)
             stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            if schema.engine() == "postgres":
+            if schema.conn_engine(conn) == "postgres":
                 fname = _write_backup(conn, f"sarrafi-{stamp}.json")
                 self._json({"ok": True, "file": fname,
                             "encrypted": _backup_passphrase() != ""})
@@ -2073,7 +2073,8 @@ class Handler(BaseHTTPRequestHandler):
         page = int(qs.get("page", [1])[0])
         off = max(0, (page - 1) * limit)
         total = conn.execute(f"SELECT COUNT(*) c FROM banknotes b WHERE {where}", args).fetchone()["c"]
-        concat = "GROUP_CONCAT(p.full_name)" if schema.engine() == "sqlite" else "STRING_AGG(p.full_name, ',')"
+        concat = ("GROUP_CONCAT(p.full_name)" if schema.conn_engine(conn) == "sqlite"
+                  else "STRING_AGG(p.full_name, ',')")
         rows = conn.execute(
             f"""SELECT b.*, c.code, c.decimals, c.unit_ratio, cb.name cashbox_name,
                        (SELECT {concat} FROM banknote_movements m
@@ -2535,7 +2536,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def run(port=8000, db_path=None):
     if db_path:
-        schema.DB_PATH = db_path
+        schema.use_sqlite(db_path)
     schema.init_db()
     conn = schema.get_connection()
     try:

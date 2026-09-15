@@ -18,6 +18,13 @@ try:
 except Exception:
     HAVE_DEPS = False
 
+# تست‌هایی که واقعاً OCR می‌خوانند (سریال/ارزش) به موتور نصب‌شده‌ی سیستم
+# نیاز دارند. نبودِ موتور نباید «شکست» گزارش شود، بلکه «رد شدن» است.
+_NEED_OCR = HAVE_DEPS and vision.available() and __import__(
+    "app.ocr", fromlist=["available"]).available()
+needs_ocr = unittest.skipUnless(
+    _NEED_OCR, "موتور OCR (tesseract) روی این سیستم نصب نیست")
+
 
 def _make_synthetic(path, n=6, note_w=340, note_h=700, cols=3):
     """ساخت تصویر مصنوعی با n اسکناس سبز با سریال و رقم ارزش"""
@@ -85,6 +92,7 @@ class TestVision(unittest.TestCase):
         det = vision.detect(self.data)
         self.assertEqual(det["count"], len(self.true))
 
+    @needs_ocr
     def test_serial_read(self):
         # OCR فقط «پیشنهاد» است؛ خطای تک‌رقمی مجاز است (فاصله لون‌اشتاین ≤ ۱)
         res = vision.process_photo(self.data, pattern=r"[A-Za-z]\d{8}[A-Za-z]?",
@@ -99,6 +107,7 @@ class TestVision(unittest.TestCase):
         # نباید سریالی از قلم افتاده باشد
         self.assertEqual(len(unmatched), len(self.true) - len(got))
 
+    @needs_ocr
     def test_value_read(self):
         res = vision.process_photo(self.data, pattern=r"[A-Za-z]\d{8}[A-Za-z]?",
                                    faces=[1, 2, 5, 10, 20, 50, 100])

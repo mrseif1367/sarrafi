@@ -44,14 +44,19 @@ def _seed_currencies(conn):
             for d in range(7, -1, -1):
                 dt = (today - datetime.timedelta(days=d)).strftime("%Y-%m-%d")
                 drift = r + (7 - d) * 120
-                if schema.engine() == "postgres":
+                if schema.conn_engine(conn) == "postgres":
+                    # در PostgreSQL هدف ON CONFLICT باید دقیقاً با ایندکس یکتا بخواند؛
+                    # ایندکس نرخ‌ها چهارستونی است (account, currency, date, rate_type).
                     conn.execute(
-                        "INSERT INTO exchange_rates(account_id,currency_id,rate,rate_date,source) "
-                        "VALUES (?,?,?,?,'seed') ON CONFLICT(account_id,currency_id,rate_date) DO NOTHING",
+                        "INSERT INTO exchange_rates"
+                        "(account_id,currency_id,rate,rate_date,rate_type,source) "
+                        "VALUES (?,?,?,?,'market','seed') "
+                        "ON CONFLICT(account_id,currency_id,rate_date,rate_type) DO NOTHING",
                         (acct, cids[code], drift, dt))
                 else:
                     conn.execute(
-                        "INSERT OR IGNORE INTO exchange_rates(account_id,currency_id,rate,rate_date,source) "
+                        "INSERT OR IGNORE INTO exchange_rates"
+                        "(account_id,currency_id,rate,rate_date,source) "
                         "VALUES (?,?,?,?,'seed')", (acct, cids[code], drift, dt))
     return cids
 
@@ -76,7 +81,7 @@ def seed(db_path=None, reset=True):
                   "audit_log", "settings", "billing", "plans", "users", "accounts"]
         for t in tables:
             conn.execute(f"DELETE FROM {t}")
-        if schema.engine(db_path) == "sqlite":
+        if schema.conn_engine(conn) == "sqlite":
             conn.execute("DELETE FROM sqlite_sequence")
         else:
             # ریست سیکوئنس‌ها در PostgreSQL تا شناسه‌ها از ۱ شروع شوند
