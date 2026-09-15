@@ -395,11 +395,21 @@ if "!TAG_SHA!"=="" (
   )
 )
 
-call :do_push_tag
-if "!RC!"=="0" (
-  echo   [8/8] تگ v!VER! ارسال شد.
+REM تگ روی گیت از قبل هست؟ (بررسی پیش از ارسال تا پیام تکراری/خطای بی‌مورد ندهیم)
+set "TAG_REMOTE="
+for /f "delims=" %%t in ('git ls-remote --tags "%AUTH_URL%" "refs/tags/v!VER!" 2^>nul') do set "TAG_REMOTE=1"
+
+if not defined TAG_REMOTE (
+  call :do_push_tag
+  if "!RC!"=="0" (
+    echo   [8/8] تگ v!VER! برای نخستین بار ارسال شد.
+  ) else (
+    echo         ارسال تگ ناموفق بود؛ تلاش با جایگزینی ...
+    call :do_push_tag_force
+    if "!RC!"=="0" (echo   [8/8] تگ v!VER! ارسال شد.) else (echo   [8/8] ارسال تگ انجام نشد — فایل‌ها ارسال شده‌اند.)
+  )
 ) else (
-  echo         تگ v!VER! روی گیت وجود دارد؛ در حال به‌روزرسانی ...
+  echo         تگ v!VER! روی گیت موجود است؛ به‌روزرسانی روی کامیت فعلی ...
   call :do_push_tag_force
   if "!RC!"=="0" (
     echo   [8/8] تگ v!VER! به‌روزرسانی شد.
